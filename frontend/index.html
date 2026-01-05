@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CardForge - 酒馆卡片工具站</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <style>[x-cloak] { display: none !important; }</style>
+</head>
+<body class="bg-zinc-50 text-zinc-800 antialiased">
+  <div id="app" x-data x-cloak>
+    <!-- Loading Screen -->
+    <div x-show="!$store.app.ready" class="fixed inset-0 bg-zinc-50 flex items-center justify-center z-50">
+      <div class="text-center">
+        <div class="w-12 h-12 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-zinc-500">加载中...</p>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div x-show="$store.app.ready" class="min-h-screen flex flex-col">
+      <!-- Header -->
+      <header class="bg-white shadow-neo-lift border-b border-zinc-100 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between h-16">
+            <div class="flex items-center gap-2">
+              <span class="text-xl font-bold text-brand">CardForge</span>
+              <span class="text-xs text-zinc-400">v0.1.0</span>
+            </div>
+            <nav class="hidden sm:flex items-center gap-1">
+              <button 
+                @click="$store.ui.currentPage = 'workshop'"
+                :class="$store.ui.currentPage === 'workshop' ? 'bg-zinc-100 text-brand font-medium shadow-neo-inset' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'"
+                class="px-4 py-2 rounded-neo transition-all"
+              >
+                工作台
+              </button>
+              <button 
+                @click="$store.ui.currentPage = 'quack'"
+                :class="$store.ui.currentPage === 'quack' ? 'bg-zinc-100 text-brand font-medium shadow-neo-inset' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'"
+                class="px-4 py-2 rounded-neo transition-all"
+              >
+                Quack导入
+              </button>
+              <button 
+                @click="$store.ui.currentPage = 'ai'"
+                :class="$store.ui.currentPage === 'ai' ? 'bg-zinc-100 text-brand font-medium shadow-neo-inset' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50'"
+                class="px-4 py-2 rounded-neo transition-all"
+              >
+                AI辅助
+              </button>
+            </nav>
+            <!-- Mobile Menu Button -->
+            <button class="sm:hidden p-2 text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 rounded-neo transition-colors"
+                    @click="$store.ui.mobileMenuOpen = !$store.ui.mobileMenuOpen">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            </button>
+          </div>
+          <!-- Mobile Menu -->
+          <div x-show="$store.ui.mobileMenuOpen" x-collapse class="sm:hidden pb-4">
+            <div class="flex flex-col gap-1">
+              <button 
+                @click="$store.ui.currentPage = 'workshop'; $store.ui.mobileMenuOpen = false"
+                :class="$store.ui.currentPage === 'workshop' ? 'bg-zinc-100 text-brand font-medium' : 'text-zinc-500'"
+                class="px-4 py-2 rounded-neo text-left transition-colors"
+              >
+                工作台
+              </button>
+              <button 
+                @click="$store.ui.currentPage = 'quack'; $store.ui.mobileMenuOpen = false"
+                :class="$store.ui.currentPage === 'quack' ? 'bg-zinc-100 text-brand font-medium' : 'text-zinc-500'"
+                class="px-4 py-2 rounded-neo text-left transition-colors"
+              >
+                Quack导入
+              </button>
+              <button 
+                @click="$store.ui.currentPage = 'ai'; $store.ui.mobileMenuOpen = false"
+                :class="$store.ui.currentPage === 'ai' ? 'bg-zinc-100 text-brand font-medium' : 'text-zinc-500'"
+                class="px-4 py-2 rounded-neo text-left transition-colors"
+              >
+                AI辅助
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <main class="flex-1">
+        <!-- Workshop Page -->
+        <div x-show="$store.ui.currentPage === 'workshop'" x-cloak>
+          <div x-data="workshopPage()" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            
+            <!-- Empty State: No Card Loaded -->
+            <template x-if="!hasCard">
+              <div class="flex flex-col items-center justify-center py-16">
+                <!-- Drop Zone -->
+                <div class="w-full max-w-xl"
+                     @dragover="handleDragOver($event)"
+                     @dragleave="handleDragLeave($event)"
+                     @drop="handleDrop($event)">
+                  <div class="border-2 border-dashed rounded-neo-lg p-12 flex flex-col items-center justify-center cursor-pointer transition-all"
+                       :class="dragging ? 'border-brand bg-brand-light/30' : 'border-zinc-200 hover:border-teal-400 hover:bg-teal-50/30'"
+                       @click="$refs.fileInput.click()">
+                    <div class="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mb-4">
+                      <svg class="w-8 h-8" :class="dragging ? 'text-brand' : 'text-zinc-300'" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                      </svg>
+                    </div>
+                    <p class="text-zinc-600 font-medium mb-1">拖放文件到此处</p>
+                    <p class="text-zinc-400 text-sm mb-4">或点击选择文件 (PNG/JSON)</p>
+                    <span class="bg-brand text-white px-6 py-2.5 rounded-neo shadow-md hover:bg-brand-dark transition-colors inline-block">
+                      选择文件
+                    </span>
+                  </div>
+                </div>
+                <input type="file" x-ref="fileInput" accept=".png,.json,image/png,application/json" class="hidden" @change="handleFileSelect($event)">
+                
+                <!-- Or Create New -->
+                <div class="mt-6 text-center">
+                  <span class="text-zinc-400 text-sm">或者</span>
+                  <button @click="createNew()" class="ml-2 text-brand hover:text-brand-dark font-medium text-sm transition-colors">
+                    创建新角色卡
+                  </button>
+                </div>
+              </div>
+            </template>
+            
+            <!-- Card Editor: Card Loaded -->
+            <template x-if="hasCard">
+              <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Left Panel: Image & Actions -->
+                <div class="lg:col-span-4 xl:col-span-3">
+                  <div class="bg-white rounded-neo-lg shadow-neo-lift p-4 lg:sticky lg:top-24">
+                    <!-- Image Preview -->
+                    <div class="relative group mb-4">
+                      <template x-if="$store.card.imageDataUrl">
+                        <img :src="$store.card.imageDataUrl" 
+                             :alt="cardName"
+                             class="w-full aspect-[3/4] object-cover rounded-neo">
+                      </template>
+                      <template x-if="!$store.card.imageDataUrl">
+                        <div class="w-full aspect-[3/4] bg-zinc-100 rounded-neo flex items-center justify-center">
+                          <div class="text-center text-zinc-400">
+                            <svg class="w-12 h-12 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                            </svg>
+                            <p class="text-sm">无图片</p>
+                          </div>
+                        </div>
+                      </template>
+                      <!-- Hover Overlay: Change Image -->
+                      <div class="absolute inset-0 bg-zinc-900/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-neo flex items-center justify-center">
+                        <label class="cursor-pointer text-white text-sm font-medium px-4 py-2 bg-white/20 rounded-neo hover:bg-white/30 transition-colors">
+                          更换图片
+                          <input type="file" accept="image/png" class="hidden" @change="handleImageChange($event)">
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <!-- Card Info -->
+                    <div class="space-y-2 mb-4">
+                      <h2 class="text-lg font-bold text-zinc-800 truncate" x-text="cardName"></h2>
+                      <div class="flex items-center gap-2 text-xs text-zinc-400 flex-wrap">
+                        <span x-text="$store.card.sourceFormat || 'V3'"></span>
+                        <span>•</span>
+                        <span x-show="$store.card.hasChanges" class="text-amber-700">未保存</span>
+                        <span x-show="!$store.card.hasChanges" class="text-teal-600">已保存</span>
+                        <span x-show="autoSaveStatus" class="text-zinc-400" x-text="autoSaveStatus"></span>
+                      </div>
+                      <!-- Token Badge -->
+                      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors w-fit"
+                           :class="tokenBadgeClass">
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
+                        </svg>
+                        <span x-text="`${tokenInfo.total.toLocaleString()} tokens (${tokenInfo.percentage}%)`"></span>
+                      </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="space-y-2">
+                      <button @click="exportPNG()" 
+                              data-export-png
+                              class="w-full bg-brand text-white px-4 py-2.5 rounded-neo shadow-md hover:bg-brand-dark transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        导出 PNG
+                      </button>
+                      <div class="flex gap-2">
+                        <button @click="exportJSON()" 
+                                class="flex-1 bg-white text-zinc-700 px-3 py-2 rounded-neo shadow-neo-lift hover:shadow-neo-lift-hover transition-shadow text-sm">
+                          导出 JSON
+                        </button>
+                        <button @click="resetCard()" 
+                                class="px-3 py-2 text-zinc-400 hover:text-zinc-600 rounded-neo hover:bg-zinc-100 transition-colors"
+                                title="重置">
+                          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                          </svg>
+                        </button>
+                        <button @click="closeCard()" 
+                                class="px-3 py-2 text-zinc-400 hover:text-red-700 rounded-neo hover:bg-red-50 transition-colors"
+                                title="关闭">
+                          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- Export Settings -->
+                    <div class="mt-4 pt-4 border-t border-zinc-100">
+                      <label class="flex items-center gap-2 text-sm text-zinc-600 cursor-pointer">
+                        <input type="checkbox" x-model="exportSettings.includeV2Compat" 
+                               @change="localStorage.setItem('cardforge_export_settings', JSON.stringify(exportSettings))"
+                               class="rounded border-zinc-300 text-brand focus:ring-brand focus:shadow-none">
+                        <span>包含 V2 兼容数据</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Right Panel: Editor -->
+                <div class="lg:col-span-8 xl:col-span-9 space-y-4">
+                  
+                  <!-- Section: Basic Info -->
+                  <section class="bg-white rounded-neo-lg shadow-neo-lift overflow-hidden">
+                    <button @click="activeSection = activeSection === 'basic' ? '' : 'basic'"
+                            class="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-50 transition-colors">
+                      <h3 class="font-semibold text-zinc-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                        </svg>
+                        基本信息
+                      </h3>
+                      <svg class="w-5 h-5 text-zinc-400 transition-transform" :class="activeSection === 'basic' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    <div x-show="activeSection === 'basic'" x-collapse class="px-6 pb-6">
+                      <div class="space-y-4">
+                        <!-- Name -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">角色名称</label>
+                          <input type="text" 
+                                 x-model="$store.card.data.data.name"
+                                 @input="$store.card.checkChanges()"
+                                 placeholder="角色名称"
+                                 class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-2.5 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all">
+                        </div>
+                        
+                        <!-- Creator -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label class="block text-sm font-medium text-zinc-700 mb-1">创作者</label>
+                            <input type="text" 
+                                   x-model="$store.card.data.data.creator"
+                                   @input="$store.card.checkChanges()"
+                                   placeholder="创作者名称"
+                                   class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-2.5 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all">
+                          </div>
+                          <div>
+                            <label class="block text-sm font-medium text-zinc-700 mb-1">版本</label>
+                            <input type="text" 
+                                   x-model="$store.card.data.data.character_version"
+                                   @input="$store.card.checkChanges()"
+                                   placeholder="1.0"
+                                   class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-2.5 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all">
+                          </div>
+                        </div>
+                        
+                        <!-- Nickname -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">昵称</label>
+                          <input type="text" 
+                                 x-model="$store.card.data.data.nickname"
+                                 @input="$store.card.checkChanges()"
+                                 placeholder="可选的昵称"
+                                 class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-2.5 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all">
+                        </div>
+                        
+                        <!-- Tags -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">标签</label>
+                          <div class="flex flex-wrap gap-2 p-3 bg-zinc-100/80 shadow-neo-inset rounded-neo min-h-[42px]">
+                            <template x-for="(tag, index) in $store.card.data.data.tags" :key="index">
+                              <span class="bg-white text-zinc-600 rounded-full px-3 py-1 text-xs font-medium inline-flex items-center gap-1 shadow-sm">
+                                <span x-text="tag"></span>
+                                <button @click="$store.card.data.data.tags.splice(index, 1); $store.card.checkChanges()" 
+                                        class="text-zinc-400 hover:text-zinc-600 transition-colors">×</button>
+                              </span>
+                            </template>
+                            <input type="text" 
+                                   placeholder="输入标签后回车"
+                                   class="flex-1 min-w-[120px] bg-transparent outline-none text-sm"
+                                   @keydown.enter.prevent="if ($event.target.value.trim()) { $store.card.data.data.tags.push($event.target.value.trim()); $event.target.value = ''; $store.card.checkChanges(); }">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  
+                  <!-- Section: Description -->
+                  <section class="bg-white rounded-neo-lg shadow-neo-lift overflow-hidden">
+                    <button @click="activeSection = activeSection === 'description' ? '' : 'description'"
+                            class="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-50 transition-colors">
+                      <h3 class="font-semibold text-zinc-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                        角色描述
+                      </h3>
+                      <svg class="w-5 h-5 text-zinc-400 transition-transform" :class="activeSection === 'description' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    <div x-show="activeSection === 'description'" x-collapse class="px-6 pb-6">
+                      <div class="space-y-4">
+                        <!-- Description -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">描述</label>
+                          <textarea x-model="$store.card.data.data.description"
+                                    @input="$store.card.checkChanges(); $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                    x-init="$nextTick(() => { $el.style.height = $el.scrollHeight + 'px' })"
+                                    placeholder="角色的详细描述..."
+                                    class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 outline-none resize-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all"
+                                    style="min-height: 120px; max-height: 400px; overflow-y: auto;"></textarea>
+                        </div>
+                        
+                        <!-- Personality -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">性格</label>
+                          <textarea x-model="$store.card.data.data.personality"
+                                    @input="$store.card.checkChanges(); $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                    x-init="$nextTick(() => { $el.style.height = $el.scrollHeight + 'px' })"
+                                    placeholder="角色的性格特点..."
+                                    class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 outline-none resize-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all"
+                                    style="min-height: 80px; max-height: 300px; overflow-y: auto;"></textarea>
+                        </div>
+                        
+                        <!-- Scenario -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">场景</label>
+                          <textarea x-model="$store.card.data.data.scenario"
+                                    @input="$store.card.checkChanges(); $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                    x-init="$nextTick(() => { $el.style.height = $el.scrollHeight + 'px' })"
+                                    placeholder="角色所处的场景或背景..."
+                                    class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 outline-none resize-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all"
+                                    style="min-height: 80px; max-height: 300px; overflow-y: auto;"></textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  
+                  <!-- Section: Messages -->
+                  <section class="bg-white rounded-neo-lg shadow-neo-lift overflow-hidden">
+                    <button @click="activeSection = activeSection === 'messages' ? '' : 'messages'"
+                            class="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-50 transition-colors">
+                      <h3 class="font-semibold text-zinc-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                        </svg>
+                        对话消息
+                      </h3>
+                      <svg class="w-5 h-5 text-zinc-400 transition-transform" :class="activeSection === 'messages' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    <div x-show="activeSection === 'messages'" x-collapse class="px-6 pb-6">
+                      <div class="space-y-4">
+                        <!-- First Message -->
+                        <div>
+                          <div class="flex items-center justify-between mb-1">
+                            <label class="block text-sm font-medium text-zinc-700">开场白</label>
+                            <button @click="$dispatch('greeting-preview', { content: $store.card.data.data.first_mes, index: -1 })"
+                                    type="button"
+                                    class="text-xs text-zinc-500 hover:text-brand flex items-center gap-1 transition-colors">
+                              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                              </svg>
+                              预览
+                            </button>
+                          </div>
+                          <textarea x-model="$store.card.data.data.first_mes"
+                                    @input="$store.card.checkChanges(); $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                    x-init="$nextTick(() => { $el.style.height = $el.scrollHeight + 'px' })"
+                                    placeholder="角色的第一条消息..."
+                                    class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 outline-none resize-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all"
+                                    style="min-height: 120px; max-height: 400px; overflow-y: auto;"></textarea>
+                        </div>
+                        
+                        <!-- Message Examples -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">对话示例</label>
+                          <textarea x-model="$store.card.data.data.mes_example"
+                                    @input="$store.card.checkChanges(); $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                    x-init="$nextTick(() => { $el.style.height = $el.scrollHeight + 'px' })"
+                                    placeholder="示例对话..."
+                                    class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 outline-none resize-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all font-mono text-sm"
+                                    style="min-height: 100px; max-height: 400px; overflow-y: auto;"></textarea>
+                        </div>
+                        
+                        <!-- Alternate Greetings -->
+                        <div>
+                          <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium text-zinc-700">备选开场白</label>
+                            <button @click="$store.card.data.data.alternate_greetings.push(''); $store.card.checkChanges()"
+                                    class="text-brand hover:text-brand-dark text-sm font-medium flex items-center gap-1 transition-colors">
+                              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                              </svg>
+                              添加
+                            </button>
+                          </div>
+                          <template x-if="$store.card.data.data.alternate_greetings.length === 0">
+                            <div class="text-center py-6 text-zinc-400 text-sm bg-zinc-50 rounded-neo">
+                              暂无备选开场白
+                            </div>
+                          </template>
+                          <div class="space-y-2">
+                            <template x-for="(greeting, index) in $store.card.data.data.alternate_greetings" :key="index">
+                              <div class="relative group">
+                                <textarea x-model="$store.card.data.data.alternate_greetings[index]"
+                                          @input="$store.card.checkChanges()"
+                                          :placeholder="'备选开场白 ' + (index + 1)"
+                                          class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 pr-20 outline-none resize-y focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all"
+                                          rows="3"></textarea>
+                                <div class="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                  <button @click="$dispatch('greeting-preview', { content: $store.card.data.data.alternate_greetings[index], index: index })"
+                                          type="button"
+                                          class="p-1 text-zinc-400 hover:text-brand"
+                                          title="预览">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                    </svg>
+                                  </button>
+                                  <button @click="$store.card.data.data.alternate_greetings.splice(index, 1); $store.card.checkChanges()"
+                                          type="button"
+                                          class="p-1 text-zinc-400 hover:text-red-700"
+                                          title="删除">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </template>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  
+                  <!-- Section: System Prompts -->
+                  <section class="bg-white rounded-neo-lg shadow-neo-lift overflow-hidden">
+                    <button @click="activeSection = activeSection === 'system' ? '' : 'system'"
+                            class="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-50 transition-colors">
+                      <h3 class="font-semibold text-zinc-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                        系统设置
+                      </h3>
+                      <svg class="w-5 h-5 text-zinc-400 transition-transform" :class="activeSection === 'system' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    <div x-show="activeSection === 'system'" x-collapse class="px-6 pb-6">
+                      <div class="space-y-4">
+                        <!-- System Prompt -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">系统提示词</label>
+                          <textarea x-model="$store.card.data.data.system_prompt"
+                                    @input="$store.card.checkChanges(); $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                    x-init="$nextTick(() => { $el.style.height = $el.scrollHeight + 'px' })"
+                                    placeholder="系统提示词..."
+                                    class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 outline-none resize-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all font-mono text-sm"
+                                    style="min-height: 100px; max-height: 400px; overflow-y: auto;"></textarea>
+                        </div>
+                        
+                        <!-- Post History Instructions -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">历史后指令</label>
+                          <textarea x-model="$store.card.data.data.post_history_instructions"
+                                    @input="$store.card.checkChanges(); $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                    x-init="$nextTick(() => { $el.style.height = $el.scrollHeight + 'px' })"
+                                    placeholder="在对话历史后插入的指令..."
+                                    class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 outline-none resize-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all font-mono text-sm"
+                                    style="min-height: 80px; max-height: 300px; overflow-y: auto;"></textarea>
+                        </div>
+                        
+                        <!-- Creator Notes -->
+                        <div>
+                          <label class="block text-sm font-medium text-zinc-700 mb-1">创作者注释</label>
+                          <textarea x-model="$store.card.data.data.creator_notes"
+                                    @input="$store.card.checkChanges(); $el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                                    x-init="$nextTick(() => { $el.style.height = $el.scrollHeight + 'px' })"
+                                    placeholder="给使用者的说明或注释..."
+                                    class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 outline-none resize-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all"
+                                    style="min-height: 80px; max-height: 300px; overflow-y: auto;"></textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                  
+                  <!-- Section: Advanced (World Book, Extensions, Assets) -->
+                  <section class="bg-white rounded-neo-lg shadow-neo-lift overflow-hidden">
+                    <button @click="activeSection = activeSection === 'advanced' ? '' : 'advanced'"
+                            class="w-full px-6 py-4 flex items-center justify-between hover:bg-zinc-50 transition-colors">
+                      <h3 class="font-semibold text-zinc-800 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                        </svg>
+                        高级设置
+                        <span class="text-xs text-zinc-400 font-normal">(世界书、扩展等)</span>
+                      </h3>
+                      <svg class="w-5 h-5 text-zinc-400 transition-transform" :class="activeSection === 'advanced' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </button>
+                    <div x-show="activeSection === 'advanced'" x-collapse class="px-6 pb-6">
+                      <div class="space-y-4">
+                        
+                        <!-- 世界书编辑器 -->
+                        <div x-data="lorebookEditor({
+                          lorebook: $store.card.data.data.character_book,
+                          onUpdate: (book) => { $store.card.data.data.character_book = book; $store.card.checkChanges(); }
+                        })">
+                          <!-- 世界书标题栏 -->
+                          <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                              <svg class="w-5 h-5 text-brand" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                              </svg>
+                              <span class="text-sm font-medium text-zinc-700">世界书 (Character Book)</span>
+                              <span x-show="entryCount > 0" class="text-xs bg-zinc-100 text-zinc-500 rounded-full px-2 py-0.5" 
+                                    x-text="entryCount + ' 条目'"></span>
+                              <span x-show="constantCount > 0" class="text-xs bg-teal-100 text-teal-700 rounded-full px-2 py-0.5"
+                                    x-text="constantCount + ' 始终激活'"></span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                              <!-- 导入按钮 -->
+                              <button @click="$refs.lorebookFileInput.click()" type="button"
+                                      class="p-1.5 text-zinc-400 hover:text-brand transition-colors" title="导入世界书 JSON">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                                </svg>
+                              </button>
+                              <input type="file" x-ref="lorebookFileInput" accept=".json,application/json" class="hidden"
+                                     @change="handleImportFile($event)">
+                              <!-- 导出按钮 -->
+                              <button @click="handleExport()" x-show="entryCount > 0" type="button"
+                                      class="p-1.5 text-zinc-400 hover:text-brand transition-colors" title="导出世界书 JSON">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                </svg>
+                              </button>
+                              <span class="w-px h-4 bg-zinc-200 mx-1"></span>
+                              <button @click="collapseAll()" x-show="entryCount > 0" type="button"
+                                      class="text-xs text-zinc-400 hover:text-zinc-600 transition-colors">
+                                全部收起
+                              </button>
+                              <button @click="expandAll()" x-show="entryCount > 0" type="button"
+                                      class="text-xs text-zinc-400 hover:text-zinc-600 transition-colors">
+                                全部展开
+                              </button>
+                              <button @click="addEntry()" type="button"
+                                      class="text-brand hover:text-brand-dark text-sm font-medium flex items-center gap-1 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                添加条目
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <!-- 搜索和筛选 -->
+                          <div x-show="entryCount > 3" class="flex items-center gap-3 mb-3">
+                            <div class="flex-1 relative">
+                              <input type="text" x-model="searchQuery" placeholder="搜索条目..."
+                                     class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-2 pl-9 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all text-sm">
+                              <svg class="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                              </svg>
+                            </div>
+                            <select x-model="filterEnabled" 
+                                    class="bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-2 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 text-sm">
+                              <option value="all">全部</option>
+                              <option value="enabled">已启用</option>
+                              <option value="disabled">已禁用</option>
+                            </select>
+                          </div>
+                          
+                          <!-- 空状态 -->
+                          <template x-if="entryCount === 0">
+                            <div class="flex flex-col items-center justify-center py-8 text-center bg-zinc-50 rounded-neo">
+                              <div class="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center mb-3">
+                                <svg class="w-6 h-6 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                                </svg>
+                              </div>
+                              <p class="text-zinc-500 text-sm mb-1">暂无世界书条目</p>
+                              <p class="text-zinc-400 text-xs mb-3">世界书用于存储角色相关的背景知识</p>
+                              <button @click="addEntry()" type="button"
+                                      class="text-brand hover:text-brand-dark text-sm font-medium transition-colors">
+                                + 添加第一个条目
+                              </button>
+                            </div>
+                          </template>
+                          
+                          <!-- 条目列表 -->
+                          <div x-ref="entriesContainer" class="space-y-2" x-show="entryCount > 0">
+                            <template x-for="(entry, index) in filteredEntries" :key="entry.id">
+                              <div class="bg-white rounded-neo border border-zinc-100 shadow-sm transition-shadow hover:shadow-md overflow-hidden"
+                                   :class="entry.enabled ? '' : 'opacity-60'">
+                                <!-- 条目头部 (折叠状态) -->
+                                <div class="flex items-center gap-2 px-3 py-2 cursor-pointer group"
+                                     @click="toggleEntry(entry.id)">
+                                  <!-- 拖拽手柄 -->
+                                  <div class="entry-drag-handle flex-shrink-0 cursor-grab active:cursor-grabbing text-zinc-300 hover:text-zinc-500 transition-colors"
+                                       @click.stop>
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                                    </svg>
+                                  </div>
+                                  
+                                  <!-- 启用开关 -->
+                                  <button @click.stop="toggleEnabled(index)" type="button"
+                                          class="flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
+                                          :class="entry.enabled ? 'border-teal-500 bg-teal-500' : 'border-zinc-300 bg-white'"
+                                          :title="entry.enabled ? '已启用' : '已禁用'">
+                                    <svg x-show="entry.enabled" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                    </svg>
+                                  </button>
+                                  
+                                  <!-- 常驻标记 -->
+                                  <span x-show="entry.constant" class="flex-shrink-0 text-xs bg-amber-100 text-amber-700 rounded px-1.5 py-0.5">
+                                    常驻
+                                  </span>
+                                  
+                                  <!-- 条目名称或关键词预览 -->
+                                  <div class="flex-1 min-w-0">
+                                    <span class="text-sm font-medium text-zinc-700 truncate block"
+                                          x-text="entry.name || getEntrySummary(entry)"></span>
+                                  </div>
+                                  
+                                  <!-- 内容预览 -->
+                                  <span class="hidden sm:block flex-shrink-0 text-xs text-zinc-400 max-w-[200px] truncate"
+                                        x-text="getEntryPreview(entry)"></span>
+                                  
+                                  <!-- 展开/收起图标 -->
+                                  <svg class="w-4 h-4 text-zinc-400 transition-transform flex-shrink-0"
+                                       :class="isExpanded(entry.id) ? 'rotate-180' : ''" 
+                                       fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                  </svg>
+                                  
+                                  <!-- 操作按钮 -->
+                                  <div class="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                       @click.stop>
+                                    <button @click="duplicateEntry(index)" type="button"
+                                            class="p-1 text-zinc-400 hover:text-brand transition-colors" title="复制">
+                                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                                      </svg>
+                                    </button>
+                                    <button @click="removeEntry(index)" type="button"
+                                            class="p-1 text-zinc-400 hover:text-red-500 transition-colors" title="删除">
+                                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                                
+                                <!-- 条目详情 (展开状态) -->
+                                <div x-show="isExpanded(entry.id)" x-collapse class="border-t border-zinc-100 px-4 py-4 space-y-4">
+                                  <!-- 条目名称 -->
+                                  <div>
+                                    <label class="block text-xs font-medium text-zinc-500 mb-1">条目名称</label>
+                                    <input type="text" :value="entry.name" 
+                                           @input="updateEntryField(index, 'name', $event.target.value)"
+                                           placeholder="可选的条目名称..."
+                                           class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-2 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all text-sm">
+                                  </div>
+                                  
+                                  <!-- 关键词 -->
+                                  <div>
+                                    <label class="block text-xs font-medium text-zinc-500 mb-1">
+                                      触发关键词
+                                      <span x-show="entry.constant" class="text-amber-600">(常驻条目，关键词可为空)</span>
+                                    </label>
+                                    <div class="flex flex-wrap gap-1.5 p-2 bg-zinc-100/80 shadow-neo-inset rounded-neo min-h-[40px]">
+                                      <template x-for="(key, keyIndex) in entry.keys" :key="keyIndex">
+                                        <span class="inline-flex items-center gap-1 bg-teal-100 text-teal-800 rounded-full px-2.5 py-1 text-sm">
+                                          <span x-text="key"></span>
+                                          <button @click="removeKey(index, keyIndex)" type="button" 
+                                                  class="hover:text-red-600 transition-colors">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                            </svg>
+                                          </button>
+                                        </span>
+                                      </template>
+                                      <input type="text" placeholder="输入关键词后按 Enter..."
+                                             class="flex-1 min-w-[120px] bg-transparent outline-none text-sm"
+                                             @keydown.enter.prevent="addKey(index, $event.target.value); $event.target.value = ''">
+                                    </div>
+                                  </div>
+                                  
+                                  <!-- 内容 -->
+                                  <div>
+                                    <label class="block text-xs font-medium text-zinc-500 mb-1">条目内容</label>
+                                    <textarea :value="entry.content"
+                                              @input="updateEntryField(index, 'content', $event.target.value)"
+                                              placeholder="条目内容..."
+                                              class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-2 outline-none resize-y focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all text-sm font-mono"
+                                              rows="4"></textarea>
+                                  </div>
+                                  
+                                  <!-- 高级选项 -->
+                                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <!-- 常驻开关 -->
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                      <input type="checkbox" :checked="entry.constant"
+                                             @change="toggleConstant(index)"
+                                             class="w-4 h-4 rounded border-zinc-300 text-teal-600 focus:ring-teal-500">
+                                      <span class="text-xs text-zinc-600">始终激活</span>
+                                    </label>
+                                    
+                                    <!-- 区分大小写 -->
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                      <input type="checkbox" :checked="entry.case_sensitive"
+                                             @change="updateEntryField(index, 'case_sensitive', $event.target.checked)"
+                                             class="w-4 h-4 rounded border-zinc-300 text-teal-600 focus:ring-teal-500">
+                                      <span class="text-xs text-zinc-600">区分大小写</span>
+                                    </label>
+                                    
+                                    <!-- 使用正则 -->
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                      <input type="checkbox" :checked="entry.use_regex"
+                                             @change="updateEntryField(index, 'use_regex', $event.target.checked)"
+                                             class="w-4 h-4 rounded border-zinc-300 text-teal-600 focus:ring-teal-500">
+                                      <span class="text-xs text-zinc-600">正则匹配</span>
+                                    </label>
+                                    
+                                    <!-- 选择性触发 -->
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                      <input type="checkbox" :checked="entry.selective"
+                                             @change="updateEntryField(index, 'selective', $event.target.checked)"
+                                             class="w-4 h-4 rounded border-zinc-300 text-teal-600 focus:ring-teal-500">
+                                      <span class="text-xs text-zinc-600">选择性触发</span>
+                                    </label>
+                                  </div>
+                                  
+                                  <!-- 次要关键词 (仅在选择性触发时显示) -->
+                                  <div x-show="entry.selective">
+                                    <label class="block text-xs font-medium text-zinc-500 mb-1">次要关键词 (需同时匹配)</label>
+                                    <div class="flex flex-wrap gap-1.5 p-2 bg-zinc-100/80 shadow-neo-inset rounded-neo min-h-[40px]">
+                                      <template x-for="(key, keyIndex) in entry.secondary_keys" :key="keyIndex">
+                                        <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 rounded-full px-2.5 py-1 text-sm">
+                                          <span x-text="key"></span>
+                                          <button @click="removeSecondaryKey(index, keyIndex)" type="button"
+                                                  class="hover:text-red-600 transition-colors">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                            </svg>
+                                          </button>
+                                        </span>
+                                      </template>
+                                      <input type="text" placeholder="输入次要关键词后按 Enter..."
+                                             class="flex-1 min-w-[120px] bg-transparent outline-none text-sm"
+                                             @keydown.enter.prevent="addSecondaryKey(index, $event.target.value); $event.target.value = ''">
+                                    </div>
+                                  </div>
+                                  
+                                  <!-- 数值选项 -->
+                                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                      <label class="block text-xs font-medium text-zinc-500 mb-1">插入顺序</label>
+                                      <input type="number" :value="entry.insertion_order"
+                                             @input="updateEntryField(index, 'insertion_order', parseInt($event.target.value) || 0)"
+                                             class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-1.5 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 text-sm">
+                                    </div>
+                                    <div>
+                                      <label class="block text-xs font-medium text-zinc-500 mb-1">优先级</label>
+                                      <input type="number" :value="entry.priority"
+                                             @input="updateEntryField(index, 'priority', parseInt($event.target.value) || 0)"
+                                             class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-1.5 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 text-sm">
+                                    </div>
+                                    <div class="col-span-2">
+                                      <label class="block text-xs font-medium text-zinc-500 mb-1">插入位置</label>
+                                      <select :value="entry.position || ''"
+                                              @change="updateEntryField(index, 'position', $event.target.value || null)"
+                                              class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-1.5 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 text-sm">
+                                        <option value="">默认</option>
+                                        <option value="before_char">角色定义前</option>
+                                        <option value="after_char">角色定义后</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                  
+                                  <!-- 备注 -->
+                                  <div>
+                                    <label class="block text-xs font-medium text-zinc-500 mb-1">备注</label>
+                                    <input type="text" :value="entry.comment"
+                                           @input="updateEntryField(index, 'comment', $event.target.value)"
+                                           placeholder="条目备注（可选）..."
+                                           class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-2 outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all text-sm">
+                                  </div>
+                                </div>
+                              </div>
+                            </template>
+                          </div>
+                          
+                          <!-- 添加按钮 (底部虚线样式) -->
+                          <button x-show="entryCount > 0" @click="addEntry()" type="button"
+                                  class="w-full mt-3 border-2 border-dashed border-zinc-200 hover:border-teal-400 
+                                         rounded-neo py-3 text-zinc-400 hover:text-teal-600 transition-colors
+                                         flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            添加条目
+                          </button>
+                          
+                          <!-- 清空按钮 -->
+                          <div x-show="entryCount > 3" class="flex justify-end mt-2">
+                            <button @click="clearAll()" type="button"
+                                    class="text-xs text-zinc-400 hover:text-red-500 transition-colors">
+                              清空全部条目
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <!-- 分隔线 -->
+                        <div class="border-t border-zinc-100 my-4"></div>
+                        
+                        <!-- Group Only Greetings -->
+                        <div x-data="arrayEditor({ 
+                          items: $store.card.data.data.group_only_greetings,
+                          onUpdate: (items) => { $store.card.data.data.group_only_greetings = items; $store.card.checkChanges(); },
+                          itemLabel: '群组开场白',
+                          placeholder: '输入群组专用开场白...',
+                          emptyMessage: '暂无群组专用开场白'
+                        })">
+                          <!-- 标题栏 -->
+                          <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-medium text-zinc-700">群组专用开场白</label>
+                            <div class="flex items-center gap-2">
+                              <span class="text-xs text-zinc-400" x-text="items.length + ' 项'"></span>
+                              <button @click="addItem()"
+                                      type="button"
+                                      class="text-brand hover:text-brand-dark text-sm font-medium flex items-center gap-1 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                添加
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <!-- 空状态 -->
+                          <template x-if="items.length === 0">
+                            <div class="text-center py-6 text-zinc-400 text-sm bg-zinc-50 rounded-neo">
+                              暂无群组专用开场白
+                            </div>
+                          </template>
+                          
+                          <!-- 列表 -->
+                          <div x-ref="sortableContainer" class="space-y-2" x-show="items.length > 0">
+                            <template x-for="(item, index) in items" :key="index">
+                              <div class="relative group">
+                                <textarea x-model="items[index]"
+                                          @input="triggerUpdate()"
+                                          :placeholder="'群组开场白 ' + (index + 1)"
+                                          class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-4 py-3 pr-10 outline-none resize-y focus:bg-white focus:ring-2 focus:ring-teal-100 focus:shadow-none transition-all"
+                                          rows="3"></textarea>
+                                <button @click="removeItem(index)"
+                                        class="absolute top-2 right-2 p-1 text-zinc-400 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-all"
+                                        title="删除">
+                                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </template>
+                          </div>
+                        </div>
+                        
+                        <!-- 分隔线 -->
+                        <div class="border-t border-zinc-100 my-4"></div>
+                        
+                        <!-- Extensions 编辑器 -->
+                        <div x-data="extensionsEditor({ 
+                          value: $store.card.data.data.extensions || {},
+                          onUpdate: (value) => { $store.card.data.data.extensions = value; $store.card.checkChanges(); }
+                        })">
+                          <!-- 标题栏 -->
+                          <button @click="toggle()" 
+                                  type="button"
+                                  class="w-full flex items-center justify-between py-2 text-left">
+                            <div class="flex items-center gap-2">
+                              <svg class="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+                              </svg>
+                              <span class="text-sm font-medium text-zinc-700">扩展字段 (Extensions)</span>
+                              <span x-show="!isEmpty" 
+                                    class="text-xs text-zinc-400 bg-zinc-100 rounded-full px-2 py-0.5"
+                                    x-text="Object.keys(value).length + ' 字段'"></span>
+                            </div>
+                            <svg class="w-4 h-4 text-zinc-400 transition-transform"
+                                 :class="expanded ? 'rotate-180' : ''"
+                                 fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                          </button>
+                          
+                          <!-- 编辑区域 -->
+                          <div x-show="expanded" x-collapse class="mt-2">
+                            <p class="text-xs text-zinc-400 mb-2">扩展字段用于存储第三方工具的自定义数据</p>
+                            <div class="relative">
+                              <textarea x-model="rawText"
+                                        @input.debounce.300ms="handleInput()"
+                                        :class="isValid 
+                                          ? 'bg-zinc-100/80 shadow-neo-inset focus:bg-white focus:ring-2 focus:ring-teal-100' 
+                                          : 'bg-red-50/50 ring-2 ring-red-200'"
+                                        class="w-full rounded-neo px-4 py-3 outline-none transition-all font-mono text-sm resize-y"
+                                        style="min-height: 120px; max-height: 400px;"
+                                        placeholder="{}"></textarea>
+                              <span class="absolute bottom-2 right-2 text-xs text-zinc-300"
+                                    x-text="lineCount + ' 行'"></span>
+                            </div>
+                            <div x-show="!isValid" class="flex items-center gap-2 mt-2 text-red-600 text-sm">
+                              <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                              </svg>
+                              <span x-text="errorMessage"></span>
+                            </div>
+                            <div class="flex items-center justify-between mt-2">
+                              <div class="flex gap-2">
+                                <button @click="formatCurrent()"
+                                        :disabled="!isValid"
+                                        :class="isValid ? 'hover:text-brand' : 'opacity-30 cursor-not-allowed'"
+                                        type="button"
+                                        class="text-xs text-zinc-500 transition-colors">
+                                  格式化
+                                </button>
+                                <button @click="reset()"
+                                        type="button"
+                                        class="text-xs text-zinc-500 hover:text-zinc-700 transition-colors">
+                                  重置
+                                </button>
+                              </div>
+                              <button @click="clear()"
+                                      x-show="!isEmpty"
+                                      type="button"
+                                      class="text-xs text-zinc-400 hover:text-red-500 transition-colors">
+                                清空
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- Assets 编辑器 -->
+                        <div x-data="assetsEditor({ 
+                          assets: $store.card.data.data.assets || [],
+                          onUpdate: (assets) => { $store.card.data.data.assets = assets; $store.card.checkChanges(); }
+                        })">
+                          <!-- 标题栏 -->
+                          <button @click="toggle()" 
+                                  type="button"
+                                  class="w-full flex items-center justify-between py-2 text-left">
+                            <div class="flex items-center gap-2">
+                              <svg class="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                              </svg>
+                              <span class="text-sm font-medium text-zinc-700">Assets 资源</span>
+                              <span x-show="assets.length > 0" 
+                                    class="text-xs text-zinc-400 bg-zinc-100 rounded-full px-2 py-0.5"
+                                    x-text="assets.length + ' 项'"></span>
+                            </div>
+                            <svg class="w-4 h-4 text-zinc-400 transition-transform"
+                                 :class="expanded ? 'rotate-180' : ''"
+                                 fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                          </button>
+                          
+                          <!-- 编辑区域 -->
+                          <div x-show="expanded" x-collapse class="mt-2">
+                            <!-- 模式切换 -->
+                            <div class="flex items-center justify-between mb-3">
+                              <div class="inline-flex bg-zinc-100 rounded-neo p-0.5">
+                                <button @click="switchMode('list')"
+                                        :class="editMode === 'list' ? 'bg-white shadow-sm text-zinc-700' : 'text-zinc-500'"
+                                        type="button"
+                                        class="px-3 py-1 text-xs font-medium rounded transition-all">
+                                  列表
+                                </button>
+                                <button @click="switchMode('json')"
+                                        :class="editMode === 'json' ? 'bg-white shadow-sm text-zinc-700' : 'text-zinc-500'"
+                                        type="button"
+                                        class="px-3 py-1 text-xs font-medium rounded transition-all">
+                                  JSON
+                                </button>
+                              </div>
+                              <button @click="addAsset()"
+                                      x-show="editMode === 'list'"
+                                      type="button"
+                                      class="text-brand hover:text-brand-dark text-sm font-medium flex items-center gap-1 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                添加
+                              </button>
+                            </div>
+                            
+                            <!-- 列表模式 -->
+                            <div x-show="editMode === 'list'" class="space-y-2">
+                              <template x-if="assets.length === 0">
+                                <div class="text-center py-6 text-zinc-400 text-sm bg-zinc-50 rounded-neo">
+                                  暂无资源
+                                </div>
+                              </template>
+                              
+                              <template x-for="(asset, index) in assets" :key="index">
+                                <div class="bg-zinc-50 rounded-neo p-3 group">
+                                  <div class="flex items-start gap-3">
+                                    <span class="flex-shrink-0 w-6 h-6 bg-zinc-200 rounded-full flex items-center justify-center text-xs text-zinc-500 font-medium"
+                                          x-text="index + 1"></span>
+                                    <div class="flex-1 grid grid-cols-2 gap-2">
+                                      <div>
+                                        <label class="text-xs text-zinc-500 mb-1 block">Type</label>
+                                        <select :value="asset.type"
+                                                @change="updateAsset(index, 'type', $event.target.value)"
+                                                class="w-full bg-white shadow-sm rounded px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-teal-100 transition-all">
+                                          <template x-for="t in assetTypes" :key="t.value">
+                                            <option :value="t.value" x-text="t.label"></option>
+                                          </template>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label class="text-xs text-zinc-500 mb-1 block">Name</label>
+                                        <input type="text"
+                                               :value="asset.name"
+                                               @input="updateAsset(index, 'name', $event.target.value)"
+                                               placeholder="main"
+                                               class="w-full bg-white shadow-sm rounded px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-teal-100 transition-all">
+                                      </div>
+                                      <div class="col-span-2">
+                                        <label class="text-xs text-zinc-500 mb-1 block">URI</label>
+                                        <input type="text"
+                                               :value="asset.uri"
+                                               @input="updateAsset(index, 'uri', $event.target.value)"
+                                               placeholder="ccdefault:"
+                                               class="w-full bg-white shadow-sm rounded px-2 py-1.5 text-sm font-mono outline-none focus:ring-2 focus:ring-teal-100 transition-all">
+                                      </div>
+                                      <div>
+                                        <label class="text-xs text-zinc-500 mb-1 block">Extension</label>
+                                        <input type="text"
+                                               :value="asset.ext"
+                                               @input="updateAsset(index, 'ext', $event.target.value)"
+                                               placeholder="png"
+                                               class="w-full bg-white shadow-sm rounded px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-teal-100 transition-all">
+                                      </div>
+                                    </div>
+                                    <button @click="removeAsset(index)"
+                                            type="button"
+                                            class="p-1 text-zinc-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                            title="删除">
+                                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              </template>
+                            </div>
+                            
+                            <!-- JSON 模式 -->
+                            <div x-show="editMode === 'json'">
+                              <textarea x-model="rawJson"
+                                        @input.debounce.300ms="handleJsonInput()"
+                                        :class="isJsonValid 
+                                          ? 'bg-zinc-100/80 shadow-neo-inset focus:bg-white focus:ring-2 focus:ring-teal-100' 
+                                          : 'bg-red-50/50 ring-2 ring-red-200'"
+                                        class="w-full rounded-neo px-4 py-3 outline-none transition-all font-mono text-sm resize-y"
+                                        style="min-height: 120px; max-height: 400px;"
+                                        placeholder="[]"></textarea>
+                              <div x-show="!isJsonValid" class="flex items-center gap-2 mt-2 text-red-600 text-sm">
+                                <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                                </svg>
+                                <span x-text="jsonError"></span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                      </div>
+                    </div>
+                  </section>
+                  
+                </div>
+              </div>
+            </template>
+            
+          </div>
+        </div>
+
+        <!-- Quack Import Page -->
+        <div x-show="$store.ui.currentPage === 'quack'" x-cloak>
+          <div x-data="quackPage()" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-init="init()">
+            
+            <!-- 页面标题 -->
+            <div class="text-center mb-8">
+              <h1 class="text-2xl font-bold text-zinc-900">Quack 角色导入</h1>
+              <p class="text-zinc-500 mt-2">从 QuackAI 导入角色卡到 SillyTavern V3 格式</p>
+            </div>
+            
+            <!-- 输入模式切换 -->
+            <div class="flex justify-center gap-2 mb-6">
+              <button 
+                @click="inputMode = 'api'; quackInput = ''"
+                :class="inputMode === 'api' ? 'bg-brand text-white shadow-md' : 'bg-white text-zinc-600 shadow-neo-lift hover:bg-zinc-50'"
+                class="px-4 py-2 rounded-neo transition-all font-medium"
+              >
+                <span class="flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                  </svg>
+                  ID/URL 模式
+                </span>
+              </button>
+              <button 
+                @click="inputMode = 'json'; quackInput = ''"
+                :class="inputMode === 'json' ? 'bg-brand text-white shadow-md' : 'bg-white text-zinc-600 shadow-neo-lift hover:bg-zinc-50'"
+                class="px-4 py-2 rounded-neo transition-all font-medium"
+              >
+                <span class="flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+                  </svg>
+                  手动粘贴 JSON
+                </span>
+              </button>
+            </div>
+            
+            <!-- 安全提示 -->
+            <div x-show="inputMode === 'api'" class="bg-amber-50 border border-amber-200 rounded-neo p-4 mb-6" x-cloak>
+              <div class="flex gap-3">
+                <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+                <div class="text-sm">
+                  <p class="font-medium text-amber-800">安全提示</p>
+                  <p class="text-amber-700 mt-1">Cookie 仅在本地浏览器中使用，不会上传到任何服务器。请确保您信任当前网络环境。</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- IP 封禁提示 -->
+            <div x-show="inputMode === 'json'" class="bg-blue-50 border border-blue-200 rounded-neo p-4 mb-6" x-cloak>
+              <div class="flex gap-3">
+                <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                </svg>
+                <div class="text-sm">
+                  <p class="font-medium text-blue-800">手动模式说明</p>
+                  <p class="text-blue-700 mt-1">如果您的 IP 被 Quack 封禁，可以在浏览器开发者工具中复制角色 API 响应的 JSON 数据，粘贴到下方进行转换。</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 主输入区域 -->
+            <div class="bg-white rounded-neo-lg shadow-neo-lift p-6 mb-6">
+              <!-- 输入框 -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-zinc-700 mb-2">
+                  <span x-text="inputMode === 'api' ? 'Quack 角色 ID 或 URL' : 'Quack JSON 数据'"></span>
+                </label>
+                <textarea
+                  x-model="quackInput"
+                  :placeholder="inputPlaceholder"
+                  :rows="inputMode === 'json' ? 8 : 3"
+                  class="w-full px-4 py-3 border border-zinc-200 rounded-neo shadow-neo-inset focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all font-mono text-sm resize-none"
+                ></textarea>
+              </div>
+              
+              <!-- Cookie 输入 (仅 API 模式) -->
+              <div x-show="inputMode === 'api'" class="mb-4" x-cloak>
+                <label class="block text-sm font-medium text-zinc-700 mb-2">
+                  Cookie (可选)
+                  <span class="text-zinc-400 font-normal">- 支持 Netscape / JSON / Header String 格式</span>
+                </label>
+                <textarea
+                  x-model="cookies"
+                  @change="handleCookieRemember()"
+                  placeholder="粘贴您的 Quack Cookie...&#10;&#10;支持格式:&#10;• cookie_name=value; another=value&#10;• [{&quot;name&quot;: &quot;xxx&quot;, &quot;value&quot;: &quot;yyy&quot;}]&#10;• Netscape cookies.txt 格式"
+                  rows="3"
+                  class="w-full px-4 py-3 border border-zinc-200 rounded-neo shadow-neo-inset focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all font-mono text-sm resize-none"
+                ></textarea>
+                <div class="flex items-center gap-2 mt-2">
+                  <input 
+                    type="checkbox" 
+                    id="rememberCookie"
+                    x-model="rememberCookie"
+                    @change="handleCookieRemember()"
+                    class="rounded border-zinc-300 text-brand focus:ring-brand"
+                  >
+                  <label for="rememberCookie" class="text-sm text-zinc-600">在本地保存 Cookie (仅存储在浏览器中)</label>
+                </div>
+              </div>
+              
+              <!-- 导入选项 -->
+              <div class="flex flex-wrap gap-6 mb-6 py-4 border-t border-zinc-100">
+                <!-- 导入模式 -->
+                <div>
+                  <label class="block text-sm font-medium text-zinc-700 mb-2">导入模式</label>
+                  <div class="flex gap-2">
+                    <button 
+                      @click="mode = 'full'"
+                      :class="mode === 'full' ? 'bg-brand-light text-brand border-brand' : 'bg-white text-zinc-600 border-zinc-200'"
+                      class="px-3 py-1.5 text-sm border rounded-neo transition-colors"
+                    >
+                      完整卡片
+                    </button>
+                    <button 
+                      @click="mode = 'only_lorebook'"
+                      :class="mode === 'only_lorebook' ? 'bg-brand-light text-brand border-brand' : 'bg-white text-zinc-600 border-zinc-200'"
+                      class="px-3 py-1.5 text-sm border rounded-neo transition-colors"
+                    >
+                      仅世界书
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- 输出格式 (仅完整卡片模式) -->
+                <div x-show="mode === 'full'" x-cloak>
+                  <label class="block text-sm font-medium text-zinc-700 mb-2">输出格式</label>
+                  <div class="flex gap-2">
+                    <button 
+                      @click="outputFormat = 'json'"
+                      :class="outputFormat === 'json' ? 'bg-brand-light text-brand border-brand' : 'bg-white text-zinc-600 border-zinc-200'"
+                      class="px-3 py-1.5 text-sm border rounded-neo transition-colors"
+                    >
+                      JSON
+                    </button>
+                    <button 
+                      @click="outputFormat = 'png'"
+                      :class="outputFormat === 'png' ? 'bg-brand-light text-brand border-brand' : 'bg-white text-zinc-600 border-zinc-200'"
+                      class="px-3 py-1.5 text-sm border rounded-neo transition-colors"
+                    >
+                      PNG (占位图)
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 操作按钮 -->
+              <div class="flex gap-3">
+                <button 
+                  @click="handlePreview()"
+                  :disabled="!hasInput || isPreviewing"
+                  class="bg-white text-zinc-700 shadow-neo-lift px-6 py-2.5 rounded-neo hover:bg-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  <span class="flex items-center gap-2">
+                    <template x-if="isPreviewing">
+                      <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle>
+                        <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" class="opacity-75"></path>
+                      </svg>
+                    </template>
+                    <template x-if="!isPreviewing">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      </svg>
+                    </template>
+                    预览
+                  </span>
+                </button>
+                <button 
+                  @click="handleImport()"
+                  :disabled="!hasInput || isImporting"
+                  class="bg-brand text-white shadow-md px-6 py-2.5 rounded-neo hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex-1 sm:flex-none"
+                >
+                  <span class="flex items-center justify-center gap-2">
+                    <template x-if="isImporting">
+                      <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" class="opacity-25"></circle>
+                        <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" class="opacity-75"></path>
+                      </svg>
+                    </template>
+                    <template x-if="!isImporting">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                      </svg>
+                    </template>
+                    导入
+                  </span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- 错误提示 -->
+            <div x-show="error" x-cloak class="bg-red-50 border border-red-200 rounded-neo p-4 mb-6">
+              <div class="flex gap-3">
+                <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                </svg>
+                <div class="text-sm">
+                  <p class="font-medium text-red-800" x-text="error?.message"></p>
+                  <p x-show="error?.hint" class="text-red-700 mt-1" x-text="error?.hint"></p>
+                  <p class="text-red-600 mt-1 font-mono text-xs" x-text="'错误码: ' + error?.code"></p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 预览结果 -->
+            <div x-show="preview && !result" x-cloak class="bg-white rounded-neo-lg shadow-neo-lift p-6 mb-6">
+              <h3 class="text-lg font-semibold text-zinc-900 mb-4">角色预览</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <span class="text-sm text-zinc-500">名称</span>
+                  <p class="font-medium text-zinc-900" x-text="preview?.name"></p>
+                </div>
+                <div>
+                  <span class="text-sm text-zinc-500">创作者</span>
+                  <p class="font-medium text-zinc-900" x-text="preview?.creator || '-'"></p>
+                </div>
+                <div>
+                  <span class="text-sm text-zinc-500">属性数量</span>
+                  <p class="font-medium text-zinc-900" x-text="preview?.attr_count || 0"></p>
+                </div>
+                <div>
+                  <span class="text-sm text-zinc-500">世界书条目</span>
+                  <p class="font-medium text-zinc-900" x-text="preview?.lorebook_count || 0"></p>
+                </div>
+                <div class="col-span-2">
+                  <span class="text-sm text-zinc-500">简介</span>
+                  <p class="text-zinc-700 mt-1 line-clamp-3" x-text="preview?.intro || '-'"></p>
+                </div>
+                <div class="col-span-2" x-show="preview?.tags?.length > 0">
+                  <span class="text-sm text-zinc-500">标签</span>
+                  <div class="flex flex-wrap gap-1 mt-1">
+                    <template x-for="tag in preview?.tags || []" :key="tag">
+                      <span class="bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-full text-xs" x-text="tag"></span>
+                    </template>
+                  </div>
+                </div>
+              </div>
+              <p class="text-xs text-zinc-400 mt-4" x-text="'数据来源: ' + (preview?.source === 'api' ? 'Quack API' : '本地 JSON')"></p>
+            </div>
+            
+            <!-- 导入结果 -->
+            <div x-show="result" x-cloak class="bg-white rounded-neo-lg shadow-neo-lift p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-zinc-900">
+                  <span x-text="mode === 'only_lorebook' ? '世界书导入成功' : '角色卡导入成功'"></span>
+                </h3>
+                <button @click="clearResult()" class="text-zinc-400 hover:text-zinc-600 transition-colors">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- 卡片信息 -->
+              <template x-if="result?.card">
+                <div class="mb-4 pb-4 border-b border-zinc-100">
+                  <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 bg-zinc-100 rounded-neo flex items-center justify-center">
+                      <svg class="w-8 h-8 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p class="font-semibold text-zinc-900" x-text="result?.card?.data?.name"></p>
+                      <p class="text-sm text-zinc-500" x-text="'创作者: ' + (result?.card?.data?.creator || '-')"></p>
+                      <p class="text-xs text-zinc-400 mt-1" x-text="'格式: CCv3 | 来源: ' + (result?.source === 'api' ? 'Quack API' : '本地 JSON')"></p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              
+              <!-- 世界书信息 -->
+              <template x-if="result?.lorebook && mode === 'only_lorebook'">
+                <div class="mb-4 pb-4 border-b border-zinc-100">
+                  <p class="font-medium text-zinc-900">
+                    世界书: <span x-text="result?.lorebook?.entries?.length || 0"></span> 个条目
+                  </p>
+                </div>
+              </template>
+              
+              <!-- 警告信息 -->
+              <template x-if="result?.warnings?.length > 0">
+                <div class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-neo">
+                  <p class="text-sm font-medium text-amber-800 mb-1">提示</p>
+                  <ul class="text-sm text-amber-700 list-disc list-inside">
+                    <template x-for="warning in result?.warnings || []" :key="warning">
+                      <li x-text="warning"></li>
+                    </template>
+                  </ul>
+                </div>
+              </template>
+              
+              <!-- 操作按钮 -->
+              <div class="flex flex-wrap gap-3">
+                <button 
+                  @click="downloadJson()"
+                  class="bg-white text-zinc-700 shadow-neo-lift px-4 py-2 rounded-neo hover:bg-zinc-50 transition-colors font-medium text-sm"
+                >
+                  <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    下载 JSON
+                  </span>
+                </button>
+                <button 
+                  x-show="resultPngUrl"
+                  @click="downloadPng()"
+                  class="bg-white text-zinc-700 shadow-neo-lift px-4 py-2 rounded-neo hover:bg-zinc-50 transition-colors font-medium text-sm"
+                >
+                  <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
+                    下载 PNG
+                  </span>
+                </button>
+                <button 
+                  x-show="result?.card && mode === 'full'"
+                  @click="sendToWorkshop()"
+                  class="bg-brand text-white shadow-md px-4 py-2 rounded-neo hover:bg-brand-dark transition-colors font-medium text-sm"
+                >
+                  <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                    </svg>
+                    发送到工作台编辑
+                  </span>
+                </button>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+
+        <!-- AI Assistant Page -->
+        <div x-show="$store.ui.currentPage === 'ai'" x-cloak>
+          <div x-data="aiPage()" x-init="init()" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- 页面标题 -->
+            <div class="text-center mb-8">
+              <h1 class="text-2xl font-bold text-zinc-900">AI 辅助功能</h1>
+              <p class="text-zinc-500 mt-2">使用 AI 帮助生成、优化、翻译角色卡内容</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              <!-- 左侧：设置面板 -->
+              <div class="lg:col-span-1">
+                <div class="bg-white rounded-neo-lg shadow-neo-lift p-6 sticky top-24">
+                  
+                  <!-- 设置标题 -->
+                  <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-zinc-900">AI 设置</h2>
+                    <div class="flex items-center gap-2">
+                      <span class="w-2 h-2 rounded-full" 
+                            :class="ai.isConnected ? 'bg-green-500' : 'bg-zinc-300'"></span>
+                      <span class="text-xs text-zinc-500" 
+                            x-text="ai.isConnected ? '已连接' : '未连接'"></span>
+                    </div>
+                  </div>
+                  
+                  <!-- API URL -->
+                  <div class="space-y-1 mb-4">
+                    <label class="text-sm font-medium text-zinc-700">API Base URL</label>
+                    <input type="text" 
+                           x-model="ai.baseUrl"
+                           placeholder="https://api.openai.com"
+                           class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-2 text-sm
+                                  outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 transition-all">
+                  </div>
+                  
+                  <!-- API Key -->
+                  <div class="space-y-1 mb-4">
+                    <label class="text-sm font-medium text-zinc-700">API Key</label>
+                    <input type="password" 
+                           x-model="ai.apiKey"
+                           placeholder="sk-..."
+                           class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-2 text-sm
+                                  outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 transition-all">
+                    <p class="text-xs text-zinc-400">API Key 不会被保存到本地</p>
+                  </div>
+                  
+                  <!-- 使用代理开关 -->
+                  <div class="flex items-center justify-between mb-4 p-3 bg-zinc-50 rounded-neo">
+                    <div>
+                      <label class="text-sm font-medium text-zinc-700">使用服务端代理</label>
+                      <p class="text-xs text-zinc-400">通过服务端转发请求</p>
+                    </div>
+                    <button @click="ai.useProxy = !ai.useProxy"
+                            class="relative w-11 h-6 rounded-full transition-colors"
+                            :class="ai.useProxy ? 'bg-brand' : 'bg-zinc-300'">
+                      <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"
+                            :class="ai.useProxy ? 'translate-x-5' : ''"></span>
+                    </button>
+                  </div>
+                  
+                  <!-- 测试连接按钮 -->
+                  <button @click="testConnection()"
+                          :disabled="!isConfigured || ai.isLoadingModels"
+                          class="w-full bg-brand text-white rounded-neo px-4 py-2.5 font-medium shadow-md
+                                 hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                                 flex items-center justify-center gap-2">
+                    <template x-if="ai.isLoadingModels">
+                      <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </template>
+                    <span x-text="ai.isLoadingModels ? '连接中...' : '测试连接'"></span>
+                  </button>
+                  
+                  <!-- 连接错误 -->
+                  <p x-show="ai.connectionError" x-text="ai.connectionError"
+                     class="text-sm text-red-600 mt-2"></p>
+                  
+                  <!-- 模型选择 -->
+                  <template x-if="ai.models.length > 0">
+                    <div class="space-y-1 mt-4 pt-4 border-t border-zinc-100">
+                      <label class="text-sm font-medium text-zinc-700">选择模型</label>
+                      <select x-model="ai.model"
+                              class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-2 text-sm
+                                     outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 transition-all">
+                        <template x-for="model in ai.models" :key="model.id">
+                          <option :value="model.id" x-text="model.id"></option>
+                        </template>
+                      </select>
+                    </div>
+                  </template>
+                  
+                  <!-- 保存设置 -->
+                  <button @click="saveSettings()"
+                          class="w-full mt-4 bg-white text-zinc-700 border border-zinc-200 rounded-neo px-4 py-2 text-sm
+                                 hover:bg-zinc-50 transition-colors">
+                    保存设置
+                  </button>
+                </div>
+              </div>
+              
+              <!-- 右侧：工作流区域 -->
+              <div class="lg:col-span-2 space-y-6">
+                
+                <!-- 新卡生成 -->
+                <div class="bg-white rounded-neo-lg shadow-neo-lift p-6">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-teal-50 rounded-full flex items-center justify-center">
+                      <svg class="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="text-lg font-semibold text-zinc-900">一句话生成角色卡</h3>
+                      <p class="text-sm text-zinc-500">描述你想要的角色，AI 将为你生成完整的角色卡</p>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-3">
+                    <textarea x-model="cardConcept"
+                              rows="3"
+                              placeholder="例如：一个神秘的吸血鬼伯爵，住在古老的城堡里，有着悲伤的过去..."
+                              class="w-full bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-2 text-sm
+                                     resize-none outline-none focus:bg-white focus:ring-2 focus:ring-teal-100 transition-all"></textarea>
+                    
+                    <div class="flex items-center gap-3">
+                      <button @click="generateNewCard()"
+                              :disabled="!ai.isConnected || ai.isGenerating"
+                              class="bg-brand text-white rounded-neo px-4 py-2 font-medium shadow-md
+                                     hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                                     flex items-center gap-2">
+                        <template x-if="ai.isGenerating && ai.currentWorkflow === 'generate'">
+                          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                          </svg>
+                        </template>
+                        生成角色卡
+                      </button>
+                      
+                      <button x-show="ai.isGenerating"
+                              @click="stopGenerating()"
+                              class="bg-red-50 text-red-600 border border-red-200 rounded-neo px-4 py-2 text-sm
+                                     hover:bg-red-100 transition-colors">
+                        停止生成
+                      </button>
+                    </div>
+                    
+                    <!-- 生成输出 -->
+                    <div x-show="outputText" class="mt-4 p-4 bg-zinc-50 rounded-neo">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-zinc-600">生成输出</span>
+                        <span x-show="ai.isGenerating" class="inline-block w-2 h-4 bg-brand animate-pulse rounded-sm"></span>
+                      </div>
+                      <pre class="text-sm text-zinc-700 whitespace-pre-wrap font-mono" x-text="outputText"></pre>
+                    </div>
+                    
+                    <!-- 使用生成的卡片 -->
+                    <button x-show="generatedCard"
+                            @click="useGeneratedCard()"
+                            class="bg-green-600 text-white rounded-neo px-4 py-2 font-medium shadow-md
+                                   hover:bg-green-700 transition-colors flex items-center gap-2">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                      使用此卡片
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- 开场白裂变 -->
+                <div class="bg-white rounded-neo-lg shadow-neo-lift p-6">
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
+                      <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="text-lg font-semibold text-zinc-900">开场白裂变</h3>
+                      <p class="text-sm text-zinc-500">基于现有开场白生成多个备选版本</p>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center gap-3 mb-3">
+                    <label class="text-sm text-zinc-600">生成数量：</label>
+                    <select x-model.number="greetingCount"
+                            class="bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-1.5 text-sm
+                                   outline-none focus:bg-white focus:ring-2 focus:ring-teal-100">
+                      <option value="2">2 条</option>
+                      <option value="3">3 条</option>
+                      <option value="5">5 条</option>
+                    </select>
+                    
+                    <button @click="generateGreetings()"
+                            :disabled="!ai.isConnected || ai.isGenerating || !$store.card.data"
+                            class="bg-blue-600 text-white rounded-neo px-4 py-2 font-medium shadow-md
+                                   hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                                   flex items-center gap-2">
+                      生成备选开场白
+                    </button>
+                  </div>
+                  
+                  <!-- 生成的开场白列表 -->
+                  <template x-if="generatedGreetings.length > 0">
+                    <div class="space-y-3 mt-4">
+                      <template x-for="(greeting, idx) in generatedGreetings" :key="idx">
+                        <div class="p-4 bg-zinc-50 rounded-neo">
+                          <div class="flex items-start justify-between gap-3">
+                            <p class="text-sm text-zinc-700 flex-1" x-text="greeting.slice(0, 200) + (greeting.length > 200 ? '...' : '')"></p>
+                            <button @click="addGreetingToCard(greeting)"
+                                    class="flex-shrink-0 bg-brand text-white px-3 py-1.5 rounded-neo text-sm
+                                           hover:bg-brand-dark transition-colors">
+                              添加
+                            </button>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+                
+                <!-- 翻译 & 焕新 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  <!-- 翻译 -->
+                  <div class="bg-white rounded-neo-lg shadow-neo-lift p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                      <div class="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="m10.5 21 5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 0 1 6-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 0 1-3.827-5.802" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 class="text-lg font-semibold text-zinc-900">卡片翻译</h3>
+                        <p class="text-sm text-zinc-500">翻译整张卡片的文本内容</p>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                      <select x-model="translateLang"
+                              class="bg-zinc-100/80 shadow-neo-inset rounded-neo px-3 py-2 text-sm
+                                     outline-none focus:bg-white focus:ring-2 focus:ring-teal-100">
+                        <option value="中文">中文</option>
+                        <option value="English">English</option>
+                        <option value="日本語">日本語</option>
+                        <option value="한국어">한국어</option>
+                      </select>
+                      
+                      <button @click="translateCard()"
+                              :disabled="!ai.isConnected || ai.isGenerating || !$store.card.data"
+                              class="bg-purple-600 text-white rounded-neo px-4 py-2 font-medium shadow-md
+                                     hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        开始翻译
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- 焕新 -->
+                  <div class="bg-white rounded-neo-lg shadow-neo-lift p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                      <div class="w-10 h-10 bg-amber-50 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 class="text-lg font-semibold text-zinc-900">旧卡焕新</h3>
+                        <p class="text-sm text-zinc-500">将 W++/PLists 转为自然语言</p>
+                      </div>
+                    </div>
+                    
+                    <button @click="modernizeCard()"
+                            :disabled="!ai.isConnected || ai.isGenerating || !$store.card.data"
+                            class="bg-amber-600 text-white rounded-neo px-4 py-2 font-medium shadow-md
+                                   hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      焕新描述
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- 提示信息 -->
+                <div class="bg-teal-50 border border-teal-200 rounded-neo p-4">
+                  <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                    </svg>
+                    <div class="text-sm text-teal-800">
+                      <p class="font-medium mb-1">提示</p>
+                      <ul class="list-disc list-inside space-y-1 text-teal-700">
+                        <li>翻译和焕新功能需要先在工作台加载角色卡</li>
+                        <li>在工作台编辑器中，每个文本字段右上角都有 AI 魔法棒按钮</li>
+                        <li>API Key 不会保存到本地存储，刷新页面需重新输入</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="bg-white border-t border-zinc-100 py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-zinc-400">
+          CardForge - 酒馆卡片工具站 | 
+          <a href="https://github.com" class="text-brand hover:underline" target="_blank" rel="noopener">GitHub</a>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Toast 通知容器 -->
+    <div x-data="toastContainer()" 
+         class="fixed bottom-6 right-6 z-[60] flex flex-col gap-2 max-w-sm"
+         aria-live="polite">
+      <template x-for="item in items" :key="item.id">
+        <div class="flex items-start gap-3 p-4 rounded-neo border shadow-neo-lift transition-all duration-300"
+             :class="getBgClass(item.type)"
+             x-show="true"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-x-8"
+             x-transition:enter-end="opacity-100 translate-x-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-x-0"
+             x-transition:leave-end="opacity-0 translate-x-8">
+          <div class="flex-shrink-0" x-html="getIcon(item.type)"></div>
+          <p class="text-sm text-zinc-700 flex-1" x-text="item.message"></p>
+          <button x-show="item.type !== 'loading'"
+                  @click="dismiss(item.id)"
+                  class="flex-shrink-0 text-zinc-400 hover:text-zinc-600 transition-colors"
+                  aria-label="关闭">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </template>
+    </div>
+
+    <!-- 全局加载遮罩 -->
+    <div x-show="$store.ui.globalLoading" 
+         x-cloak
+         class="fixed inset-0 bg-zinc-900/50 flex items-center justify-center z-50"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+      <div class="bg-white rounded-neo-lg shadow-neo-lift p-6 flex flex-col items-center gap-4">
+        <div class="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-zinc-600" x-text="$store.ui.loadingMessage || '处理中...'"></p>
+        <div x-show="$store.ui.loadingProgress > 0" class="w-48 h-2 bg-zinc-100 rounded-full overflow-hidden">
+          <div class="h-full bg-brand transition-all duration-300 rounded-full"
+               :style="'width: ' + $store.ui.loadingProgress + '%'"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全局模态框容器 -->
+    <div x-data="modalComponent()"
+         x-show="isOpen" 
+         x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @keydown.escape.window="config.closeable && close()">
+      <!-- 遮罩 -->
+      <div class="absolute inset-0 bg-zinc-900/50 backdrop-blur-sm" 
+           @click="config.closeable && close()"></div>
+      
+      <!-- 内容 -->
+      <div class="relative bg-white rounded-neo-lg shadow-2xl p-6 max-w-md w-full mx-4"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           @click.stop>
+        
+        <!-- 关闭按钮 -->
+        <button x-show="config.closeable"
+                @click="close()" 
+                class="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        
+        <!-- 图标和标题 -->
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center"
+               :class="getIconBgClass(config.type)">
+            <span x-html="getIcon(config.type)"></span>
+          </div>
+          <h2 class="text-lg font-bold text-zinc-900" x-text="config.title"></h2>
+        </div>
+        
+        <!-- 消息内容 -->
+        <p class="text-zinc-600 mb-6" x-text="config.message"></p>
+        
+        <!-- 按钮组 -->
+        <div class="flex justify-end gap-3">
+          <button x-show="config.showCancel"
+                  @click="cancel()"
+                  class="bg-white text-zinc-700 shadow-neo-lift px-4 py-2 rounded-neo hover:bg-zinc-50 transition-colors">
+            <span x-text="config.cancelText"></span>
+          </button>
+          <button @click="confirm()"
+                  class="text-white px-4 py-2 rounded-neo shadow-md transition-colors"
+                  :class="getConfirmBtnClass(config.type)">
+            <span x-text="config.confirmText"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Greeting 预览面板 -->
+    <div x-data="greetingPreview()"
+         x-show="isVisible"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center"
+         x-cloak
+         @greeting-preview.window="currentGreeting = $event.detail.content; currentIndex = $event.detail.index ?? -1; isVisible = true">
+      
+      <!-- 遮罩 -->
+      <div class="absolute inset-0 bg-zinc-900/50 backdrop-blur-sm" @click="close()"></div>
+      
+      <!-- 内容 -->
+      <div class="relative bg-white rounded-neo-lg shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col mx-4">
+        
+        <!-- 头部 -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
+          <h3 class="text-lg font-semibold text-zinc-900" x-text="title"></h3>
+          <div class="flex items-center gap-3">
+            <!-- Markdown 切换 -->
+            <label class="flex items-center gap-2 text-sm text-zinc-600 cursor-pointer">
+              <input type="checkbox" x-model="isMarkdown" class="rounded border-zinc-300">
+              <span>Markdown</span>
+            </label>
+            <!-- 关闭按钮 -->
+            <button @click="close()" class="p-1 text-zinc-400 hover:text-zinc-600">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <!-- iframe 容器 -->
+        <div class="flex-1 overflow-hidden p-4">
+          <iframe
+            :srcdoc="iframeContent"
+            sandbox=""
+            class="w-full h-full border-0 rounded-neo bg-zinc-50"
+            style="min-height: 400px;">
+          </iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

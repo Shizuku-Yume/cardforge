@@ -1,0 +1,38 @@
+{
+  "code": 0,
+  "data": [
+    {
+      "bid": "testLorebookId123",
+      "name": "Test World Book",
+      "entryList": [
+        {
+          "id": "entry_1",
+          "name": "Background Story",
+          "role": 0,
+          "depth": 4,
+          "content": "This is the background story of the character. It provides context for the world and setting.",
+          "keywords": ["history", "background"],
+          "constant": false
+        },
+        {
+          "id": "entry_2",
+          "name": "Always Active Lore",
+          "role": 0,
+          "depth": 4,
+          "content": "This entry is always active and provides constant world information.",
+          "keywords": [],
+          "constant": true
+        },
+        {
+          "id": "entry_3",
+          "name": "Special Ability",
+          "role": 0,
+          "depth": 2,
+          "content": "The character has a special ability that activates under certain conditions.",
+          "keywords": ["ability", "power", "magic"],
+          "constant": false
+        }
+      ]
+    }
+  ]
+}
