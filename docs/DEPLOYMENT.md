@@ -70,7 +70,7 @@ pytest tests/ -v --cov=app --cov-report=html
 docker run -d -p 8000:8000 --name cardforge shizukuyume/cardforge:latest
 
 # 或者 GitHub Container Registry
-docker run -d -p 8000:8000 --name cardforge ghcr.io/shizukuyume/cardforge:latest
+docker run -d -p 8000:8000 --name cardforge ghcr.io/shizuku-yume/cardforge:latest
 ```
 
 应用将在 http://localhost:8000 上可用。
@@ -87,7 +87,7 @@ docker run -d -p 8000:8000 --name cardforge ghcr.io/shizukuyume/cardforge:latest
 
 ```bash
 # 克隆项目
-git clone https://github.com/ShizukuYume/cardforge.git
+git clone https://github.com/Shizuku-Yume/cardforge.git
 cd cardforge
 
 # 使用 Docker Compose 构建并运行

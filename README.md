@@ -44,14 +44,14 @@ CardForge 是一个为 SillyTavern (酒馆) 玩家和创作者设计的现代化
 docker run -d -p 8000:8000 --name cardforge shizukuyume/cardforge:latest
 
 # 或者 GitHub Container Registry
-docker run -d -p 8000:8000 --name cardforge ghcr.io/shizukuyume/cardforge:latest
+docker run -d -p 8000:8000 --name cardforge ghcr.io/shizuku-yume/cardforge:latest
 ```
 
 #### 方式二：从源码构建
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/ShizukuYume/cardforge.git
+git clone https://github.com/Shizuku-Yume/cardforge.git
 cd cardforge
 
 # 2. 启动服务
